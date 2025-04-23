@@ -33,13 +33,19 @@ async function main() {
     ws.on('message', async (data) => {
       try {
         const message = JSON.parse(data.toString());
+
         const response = await dispatchRpc(message);
         if (response) ws.send(JSON.stringify(response));
+
         if (plugin.onMessage) plugin.onMessage(message, ws);
+
+        // Handle service registry JSON-RPC messages
+        services.registryService.handle(ws, data.toString());
+
       } catch (err: any) {
         console.error('❌ Failed to handle message:', err.message || err);
 
-        let errorCode = -32603; // Internal error
+        let errorCode = -32603;
         let messageText = 'Internal error';
 
         if (err instanceof SyntaxError) {

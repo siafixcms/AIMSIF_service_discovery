@@ -11,6 +11,11 @@ type Registry = Map<WebSocket, ServiceInfo>;
 export class ServiceRegistry {
   private registry: Registry = new Map();
 
+  // Built-in handlers
+  private handlers: Record<string, Function> = {
+    ping: async () => 'pong',
+  };
+
   register(socket: WebSocket, info: ServiceInfo) {
     this.registry.set(socket, info);
   }
@@ -35,15 +40,7 @@ export class ServiceRegistry {
         return socket.send(JSON.stringify({
           jsonrpc: '2.0',
           id,
-          error: { code: -32600, message: 'Invalid Request' }
-        }));
-      }
-
-      if (method === 'ping') {
-        return socket.send(JSON.stringify({
-          jsonrpc: '2.0',
-          id,
-          result: 'pong'
+          error: { code: -32600, message: 'Invalid Request' },
         }));
       }
 
@@ -52,44 +49,49 @@ export class ServiceRegistry {
           return socket.send(JSON.stringify({
             jsonrpc: '2.0',
             id,
-            error: { code: -32602, message: 'Invalid params' }
+            error: { code: -32602, message: 'Invalid params' },
           }));
         }
 
         this.register(socket, params);
-        return socket.send(JSON.stringify({
-          jsonrpc: '2.0',
-          id,
-          result: true
-        }));
+        return socket.send(JSON.stringify({ jsonrpc: '2.0', id, result: true }));
       }
 
       if (method === 'list') {
-        return socket.send(JSON.stringify({
-          jsonrpc: '2.0',
-          id,
-          result: this.list()
-        }));
+        return socket.send(JSON.stringify({ jsonrpc: '2.0', id, result: this.list() }));
       }
 
       if (method === 'lookup') {
         const service = this.lookup(params?.name);
-        return socket.send(JSON.stringify({
-          jsonrpc: '2.0',
-          id,
-          result: service
-        }));
+        return socket.send(JSON.stringify({ jsonrpc: '2.0', id, result: service }));
+      }
+
+      // Built-in or plugin handler
+      if (this.handlers[method]) {
+        Promise.resolve(this.handlers[method](params))
+          .then(result => socket.send(JSON.stringify({ jsonrpc: '2.0', id, result })))
+          .catch(err => {
+            socket.send(JSON.stringify({
+              jsonrpc: '2.0',
+              id,
+              error: { code: -32603, message: err.message || 'Internal error' }
+            }));
+          });
+        return;
       }
 
       return socket.send(JSON.stringify({
         jsonrpc: '2.0',
         id,
-        error: { code: -32601, message: `Method '${method}' not found in service 'aimsif_service_discovery'` }
+        error: {
+          code: -32601,
+          message: `Method '${method}' not found in service 'aimsif_service_discovery'`,
+        },
       }));
     } catch (err) {
       socket.send(JSON.stringify({
         jsonrpc: '2.0',
-        error: { code: -32700, message: 'Parse error' }
+        error: { code: -32700, message: 'Parse error' },
       }));
     }
   }

@@ -1,0 +1,43 @@
+{
+  "name": "aimsif_auth",
+  "version": "1.0.0",
+  "description": "AI micro service infrastructure framework service for client management",
+  "homepage": "https://github.com/siafixcms/AIMSIF_auth#readme",
+  "bugs": {
+    "url": "https://github.com/siafixcms/AIMSIF_auth/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/siafixcms/AIMSIF_auth.git"
+  },
+  "license": "ISC",
+  "author": "Valdis Līcis",
+  "type": "typescript",
+  "main": "src/service.js",
+  "scripts": {
+    "test": "jest --runInBand --verbose --detectOpenHandles",
+    "server": "ts-node src/server.ts"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/jest": "^29.5.14",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.1",
+    "dotenv": "^16.5.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.3.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@types/node": "^22.14.1",
+    "bcrypt": "^5.1.1",
+    "bcryptjs": "^3.0.2",
+    "jsonrpc-lite": "^2.2.0",
+    "mongodb": "^6.16.0",
+    "mongoose": "^8.13.2",
+    "redis": "^4.7.0",
+    "uuid": "^11.1.0",
+    "ws": "^8.18.1"
+  }
+}

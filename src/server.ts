@@ -1,75 +1,77 @@
-// src/server.ts
-import { WebSocketServer, WebSocket } from 'ws';
-import { parse } from 'url';
+import * as path from 'path';
 import * as dotenv from 'dotenv';
-import { handleQueueing, handleJsonRpc } from './core';
-import { plugin } from './plugin';
+import { createServer } from 'http';
+import { WebSocketServer } from 'ws';
+import { connectMongo } from './db/mongo';
+import { dispatchRpc } from './rpc/dispatcher';
+import * as services from './service';
+import { v4 as uuidv4 } from 'uuid';
+import plugin from './plugin';
 
-dotenv.config();
+// Load environment variables from .env
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
-const PORT = parseInt(process.env.PORT || '7887', 10);
-const serviceName = process.env.SERVICE_NAME || 'aimsif_service_discovery';
+const PORT = parseInt(process.env.PORT || '8080', 10);
+const SERVICE_NAME = process.env.SERVICE_ID || 'unknown-service';
 
-const wss = new WebSocketServer({ port: PORT });
+console.log(`🟢 ${SERVICE_NAME} Service Booting...`);
 
-const connections = new Map<WebSocket, { service?: string }>();
+async function main() {
+  const mongoConnected = await connectMongo();
+  if (!mongoConnected) {
+    console.error('❌ MongoDB connection failed. Service cannot start.');
+    process.exit(1);
+  }
 
-function log(...args: any[]) {
-  console.log(`[${serviceName}]`, ...args);
+  const server = createServer();
+  const wss = new WebSocketServer({ server });
+
+  wss.on('connection', (ws) => {
+    const clientId = uuidv4();
+    console.log(`🔌 Client connected: ${clientId}`);
+
+    ws.on('message', async (data) => {
+      try {
+        const message = JSON.parse(data.toString());
+        const response = await dispatchRpc(message);
+        if (response) ws.send(JSON.stringify(response));
+        if (plugin.onMessage) plugin.onMessage(message, ws);
+      } catch (err: any) {
+        console.error('❌ Failed to handle message:', err.message || err);
+
+        let errorCode = -32603; // Internal error
+        let messageText = 'Internal error';
+
+        if (err instanceof SyntaxError) {
+          errorCode = -32700;
+          messageText = 'Parse error';
+        }
+
+        ws.send(JSON.stringify({
+          jsonrpc: '2.0',
+          error: {
+            code: errorCode,
+            message: messageText,
+          },
+          id: null
+        }));
+      }
+    });
+
+    ws.on('close', () => {
+      if (plugin.onClose) plugin.onClose(ws);
+    });
+  });
+
+  server.listen(PORT, () => {
+    console.log(`✅ WebSocket server listening on ws://localhost:${PORT}`);
+    console.log(`🚀 ${SERVICE_NAME} Service Ready`);
+    console.log(`Server is running on port ${PORT}`);
+  });
 }
 
-wss.on('connection', async (ws, req) => {
-  log('Client connected');
-
-  connections.set(ws, {});
-
-  ws.on('message', async (message) => {
-    try {
-      const msgStr = message.toString();
-      let msg;
-      try {
-        msg = JSON.parse(msgStr);
-      } catch (e) {
-        ws.send(JSON.stringify({ jsonrpc: '2.0', error: { code: -32700, message: 'Parse error' }, id: null }));
-        return;
-      }
-
-      if (msg.method === 'ping') {
-        ws.send(JSON.stringify({ jsonrpc: '2.0', result: 'pong', id: msg.id }));
-        return;
-      }
-
-      await handleQueueing(ws, msg);
-      await handleJsonRpc(ws, msg, serviceName);
-    } catch (err) {
-      log('Error handling message:', err);
-    }
-  });
-
-  ws.on('close', () => {
-    log('Client disconnected');
-    connections.delete(ws);
-  });
-
-  ws.on('error', (err) => {
-    log('WebSocket error:', err);
-  });
+main().catch((err: unknown) => {
+  const message = err instanceof Error ? err.message : String(err);
+  console.error('❌ Error during startup:', message);
+  process.exit(1);
 });
-
-wss.on('listening', () => {
-  log(`WebSocket server started on ws://localhost:${PORT}`);
-});
-
-wss.on('error', (err) => {
-  log('Server failed to start:', err);
-});
-
-(async () => {
-  try {
-    if (plugin) {
-      await plugin(wss, connections);
-    }
-  } catch (e) {
-    log('Plugin initialization failed:', e);
-  }
-})();

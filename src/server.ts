@@ -5,7 +5,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { connectMongo } from './db/mongo';
 import { v4 as uuidv4 } from 'uuid';
 
-dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+dotenv.config({ path: path.resolve(__dirname, '../', '.env') });
 
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const SERVICE_NAME = process.env.SERVICE_ID || 'unknown-service';
@@ -15,7 +15,7 @@ async function loadPlugin(serviceId: string) {
     const pluginModule = await import(`./plugin`);
     return pluginModule.default;
   } catch (err) {
-    console.error(`🧨 Failed to load plugin for service '${serviceId}':`, err);
+    console.error(`❌ Failed to load plugin for service '${serviceId}':`, err);
     process.exit(1);
   }
 }
@@ -39,12 +39,13 @@ export function startServer({
         const message = JSON.parse(data.toString());
         onMessage(message, ws);
       } catch (err: any) {
-        console.error('🧨 Failed to handle message:', err.message || err);
+        console.error('❌ Failed to handle message:', err.message || err);
 
         const errorCode = err instanceof SyntaxError ? -32700 : -32603;
-        const messageText = err instanceof SyntaxError
-          ? 'Parse error'
-          : 'Internal error';
+        const messageText =
+          err instanceof SyntaxError
+            ? 'Parse error'
+            : 'Internal error';
 
         ws.send(JSON.stringify({
           jsonrpc: '2.0',
@@ -65,8 +66,8 @@ export function startServer({
   });
 
   server.listen(PORT, () => {
-    console.log(`🔌 WebSocket server listening on ws://localhost:${PORT}`);
-    console.log(`🧠 ${SERVICE_NAME} Service Ready`);
+    console.log(`📡 WebSocket server listening on ws://localhost:${PORT}`);
+    console.log(`🚀 ${SERVICE_NAME} Service Ready`);
   });
 
   return { server, wss };
@@ -75,7 +76,7 @@ export function startServer({
 async function main() {
   const mongoConnected = await connectMongo();
   if (!mongoConnected) {
-    console.error('🧨 MongoDB connection failed. Service cannot start.');
+    console.error('❌ MongoDB connection failed. Service cannot start.');
     process.exit(1);
   }
 
@@ -89,6 +90,6 @@ async function main() {
 
 main().catch((err: unknown) => {
   const message = err instanceof Error ? err.message : String(err);
-  console.error('🧨 Error during startup:', message);
+  console.error('❌ Error during startup:', message);
   process.exit(1);
 });

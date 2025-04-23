@@ -1,32 +1,41 @@
-import WebSocket from 'ws';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
+import WebSocket, { WebSocketServer } from 'ws';
+import plugin from './plugin';
 
 dotenv.config();
 
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 7887;
-
+const PORT = parseInt(process.env.PORT || '7887', 10);
 const server = createServer();
+const wss = new WebSocketServer({ server });
 
-const wss = new WebSocket.Server({ server });
+wss.on('connection', (ws: WebSocket) => {
+  ws.on('message', (raw) => {
+    try {
+      const message = JSON.parse(raw.toString());
+      plugin.onMessage?.(message, ws);
+    } catch (err) {
+      const errorResponse = {
+        jsonrpc: '2.0',
+        error: {
+          code: -32700,
+          message: 'Parse error',
+        },
+        id: null,
+      };
+      ws.send(JSON.stringify(errorResponse));
+    }
+  });
 
-wss.on('connection', (ws) => {
-  ws.on('message', (message) => {
-    // Handle incoming messages
-    console.log(`Received message: ${message}`);
-    // Echo the message back
-    ws.send(`Echo: ${message}`);
+  ws.on('close', () => {
+    plugin.onClose?.(ws);
   });
 
   ws.on('error', (error) => {
     console.error('WebSocket error:', error);
   });
-
-  ws.on('close', () => {
-    console.log('WebSocket connection closed');
-  });
 });
 
 server.listen(PORT, () => {
-  console.log(`WebSocket server is listening on port ${PORT}`);
+  console.log(`✅ Server running on ws://localhost:${PORT}`);
 });

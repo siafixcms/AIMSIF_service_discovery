@@ -1,14 +1,14 @@
 {
-  "name": "aimsif_auth",
+  "name": "aimsif_service_discovery",
   "version": "1.0.0",
   "description": "AI micro service infrastructure framework service for client management",
-  "homepage": "https://github.com/siafixcms/AIMSIF_auth#readme",
+  "homepage": "https://github.com/siafixcms/AIMSIF_service_discovery#readme",
   "bugs": {
-    "url": "https://github.com/siafixcms/AIMSIF_auth/issues"
+    "url": "https://github.com/siafixcms/AIMSIF_service_discovery/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/siafixcms/AIMSIF_auth.git"
+    "url": "git+https://github.com/siafixcms/AIMSIF_service_discovery.git"
   },
   "license": "ISC",
   "author": "Valdis Līcis",

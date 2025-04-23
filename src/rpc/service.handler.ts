@@ -25,9 +25,8 @@ export async function handleRpcRequest(
   }
 
   try {
-    const result = await (service[method] as unknown as (...args: any[]) => any)(
-      ...(Array.isArray(params) ? params : [params])
-    );
+    const fn = (service as any)[method] as (...args: any[]) => any;
+    const result = await fn(...(Array.isArray(params) ? params : [params]));
 
     return {
       jsonrpc: '2.0',
